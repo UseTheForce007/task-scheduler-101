@@ -11,6 +11,13 @@
 
 namespace ts {
 
+enum ShutdownPolicy
+{
+	DRAIN,
+	CANCEL
+
+};
+
 class FixedThreadPool
 {
    public:
@@ -20,6 +27,8 @@ class FixedThreadPool
 	FixedThreadPool(FixedThreadPool const&) = delete;
 	FixedThreadPool& operator=(FixedThreadPool const&) = delete;
 	void add_task(std::function<void()>);
+	void shutdown(ShutdownPolicy policy);
+	bool is_shutdown() const;
 
    private:
 	void worker_loop(size_t id);
