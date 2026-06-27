@@ -86,3 +86,24 @@ TEST(ThreadPoolTest, ManyTasks)
 		pool.add_task([&] { std::this_thread::sleep_for(std::chrono::milliseconds(1)); });
 	}
 }
+
+TEST(ThreadPoolTest, SubmitReturnsResult)
+{
+	ts::FixedThreadPool pool(4);
+	auto fut = pool.submit([] { return 42; });
+	EXPECT_EQ(fut.get(), 42);
+}
+
+TEST(ThreadPoolTest, SubmitPropagatesException)
+{
+	ts::FixedThreadPool pool(4);
+	auto fut = pool.submit([] { throw std::runtime_error("x"); });
+	EXPECT_THROW(fut.get(), std::runtime_error);
+}
+
+TEST(ThreadPoolTest, SubmitWithArgs)
+{
+	ts::FixedThreadPool pool(4);
+	auto fut = pool.submit([](int a, int b) { return a + b; }, 3, 4);
+	EXPECT_EQ(fut.get(), 7);
+}
