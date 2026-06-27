@@ -5,7 +5,7 @@ A study of the makings of a decent scheduler in C++.
 ## Prerequisites
 
 - CMake 3.21+
-- C++17 compiler (GCC 12+ or Clang 16+)
+- C++20 compiler (GCC 12+ or Clang 16+)
 - Google Test (libgtest-dev)
 - Google Benchmark (libbenchmark-dev) — optional, for benchmarks
 
@@ -63,4 +63,15 @@ To enable a specific sanitizer on any preset:
 ```bash
 cmake -B build/custom -DCMAKE_BUILD_TYPE=Debug -DTS_ENABLE_TSAN=ON
 cmake --build build/custom
+
+## Verbose Worker Logging
+
+Enable worker lifecycle logging for debugging:
+
+```bash
+cmake -B build/debug -DCMAKE_BUILD_TYPE=Debug -DTS_VERBOSE=ON
+cmake --build build/debug
+```
+
+Disabled by default. No runtime overhead when off — the log lines are compiled out.
 ```

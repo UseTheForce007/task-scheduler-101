@@ -5,7 +5,7 @@
 add_library(ts_compiler_options INTERFACE)
 add_library(ts::compiler_options ALIAS ts_compiler_options)
 
-target_compile_features(ts_compiler_options INTERFACE cxx_std_17)
+target_compile_features(ts_compiler_options INTERFACE cxx_std_20)
 
 target_compile_options(ts_compiler_options INTERFACE
   $<$<CXX_COMPILER_ID:GNU,Clang>:

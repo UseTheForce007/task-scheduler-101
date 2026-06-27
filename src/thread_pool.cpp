@@ -2,6 +2,7 @@
 
 #include <cstddef>
 #include <functional>
+#include <iostream>
 #include <mutex>
 #include <queue>
 #include <stdexcept>
@@ -67,14 +68,26 @@ FixedThreadPool::worker_loop(size_t id)
 	(void)id;
 	while (true) {
 		std::unique_lock<std::mutex> lock(mutex_);
+#ifdef TS_VERBOSE
+		std::cout << "Worker " << id << " going to wait...\n";
+#endif
 		cv_.wait(lock, [this] { return !task_queue_.empty() || done_; });
+#ifdef TS_VERBOSE
+		std::cout << "Worker " << id << " woke up! Queue empty? " << task_queue_.empty() << "\n";
+#endif
 		if (done_ && task_queue_.empty()) {
 			break;
 		}
 		auto task = std::move(task_queue_.front());
 		task_queue_.pop();
 		lock.unlock();
+#ifdef TS_VERBOSE
+		std::cout << "Worker " << id << " executing task.\n";
 		task();
+		std::cout << "Worker " << id << " finished task.\n";
+#else
+		task();
+#endif
 	}
 }
 
