@@ -1,1 +1,2 @@
 ts_add_benchmark(contention contention.cpp)
+ts_add_benchmark(per_worker_contention per_worker_contention.cpp)
