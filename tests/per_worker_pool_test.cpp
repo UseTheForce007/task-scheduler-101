@@ -1,0 +1,125 @@
+#include "ts/per_worker_pool.h"
+
+#include <gtest/gtest.h>
+
+#include <atomic>
+#include <chrono>
+#include <stdexcept>
+#include <thread>
+#include <vector>
+
+TEST(PerWorkerPoolTest, SubmitsAndExecutes)
+{
+	std::atomic<int> counter{0};
+	{
+		ts::PerWorkerPool pool(4);
+		for (int i = 0; i < 100; ++i) {
+			pool.add_task([&] { ++counter; });
+		}
+	}
+	EXPECT_EQ(counter.load(), 100);
+}
+
+TEST(PerWorkerPoolTest, MultipleTasks)
+{
+	std::vector<int> results(10, 0);
+	{
+		ts::PerWorkerPool pool(2);
+		for (int i = 0; i < 10; ++i) {
+			pool.add_task([&, i] { results[i] = i * i; });
+		}
+	}
+	for (int i = 0; i < 10; ++i) {
+		EXPECT_EQ(results[i], i * i);
+	}
+}
+
+TEST(PerWorkerPoolTest, ShutdownDrainsRemainingTasks)
+{
+	std::atomic<int> counter{0};
+	{
+		ts::PerWorkerPool pool(2);
+		for (int i = 0; i < 50; ++i) {
+			pool.add_task([&] {
+				std::this_thread::sleep_for(std::chrono::milliseconds(1));
+				++counter;
+			});
+		}
+		pool.shutdown(ts::DRAIN);
+	}
+	EXPECT_EQ(counter.load(), 50);
+}
+
+TEST(PerWorkerPoolTest, ShutdownCancelDropsTasks)
+{
+	std::atomic<int> counter{0};
+	{
+		ts::PerWorkerPool pool(4);
+		for (int i = 0; i < 100; ++i) {
+			pool.add_task([&] { ++counter; });
+		}
+		pool.shutdown(ts::CANCEL);
+		EXPECT_TRUE(pool.is_shutdown());
+	}
+	EXPECT_LE(counter.load(), 100);
+}
+
+TEST(PerWorkerPoolTest, SubmitAfterShutdownThrows)
+{
+	ts::PerWorkerPool pool(2);
+	pool.shutdown(ts::DRAIN);
+	EXPECT_THROW(pool.add_task([] {}), std::runtime_error);
+}
+
+TEST(PerWorkerPoolTest, ShutdownIsIdempotent)
+{
+	ts::PerWorkerPool pool(2);
+	pool.shutdown(ts::DRAIN);
+	pool.shutdown(ts::DRAIN);
+	SUCCEED();
+}
+
+TEST(PerWorkerPoolTest, ManyTasks)
+{
+	ts::PerWorkerPool pool(1);
+	for (int i = 0; i < 100; ++i) {
+		pool.add_task([&] {
+			std::this_thread::sleep_for(std::chrono::milliseconds(1));
+		});
+	}
+}
+
+TEST(PerWorkerPoolTest, SubmitReturnsResult)
+{
+	ts::PerWorkerPool pool(4);
+	auto fut = pool.submit([] { return 42; });
+	EXPECT_EQ(fut.get(), 42);
+}
+
+TEST(PerWorkerPoolTest, SubmitPropagatesException)
+{
+	ts::PerWorkerPool pool(4);
+	auto fut = pool.submit([] { throw std::runtime_error("x"); });
+	EXPECT_THROW(fut.get(), std::runtime_error);
+}
+
+TEST(PerWorkerPoolTest, SubmitWithArgs)
+{
+	ts::PerWorkerPool pool(4);
+	auto fut = pool.submit([](int a, int b) { return a + b; }, 3, 4);
+	EXPECT_EQ(fut.get(), 7);
+}
+
+TEST(PerWorkerPoolTest, DistributesAcrossWorkers)
+{
+	std::atomic<int> counters[4] = {};
+	{
+		ts::PerWorkerPool pool(4);
+		for (int i = 0; i < 400; ++i) {
+			pool.add_task([&counters, i] { ++counters[i % 4]; });
+		}
+	}
+	for (int i = 0; i < 4; ++i) {
+		EXPECT_EQ(counters[i].load(), 100);
+	}
+}

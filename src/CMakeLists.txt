@@ -1,5 +1,6 @@
 ts_add_library(ts
   thread_pool.cpp
+  per_worker_pool.cpp
 )
 
 if(TS_VERBOSE)
